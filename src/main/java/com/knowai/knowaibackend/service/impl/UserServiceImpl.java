@@ -1,4 +1,4 @@
-package com.knowai.knowaibackend.service.imp;
+package com.knowai.knowaibackend.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
@@ -9,10 +9,11 @@ import com.knowai.knowaibackend.mapper.UserMapper;
 import com.knowai.knowaibackend.service.UserService;
 
 import com.knowai.knowaibackend.vo.UserVO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PostMapping;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,6 +21,8 @@ import java.util.List;
 
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserServiceImpl.class);
 
 
     /**
@@ -83,7 +86,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         BeanUtils.copyProperties(dto,user);
         //填充创建时间
         user.setCreateTime(LocalDateTime.now());
-        return this.save(user);
+        boolean success = this.save(user);
+        if (success) {
+            log.info("新增用户成功: username={}", dto.getUsername());
+        }
+        return success;
     }
 
     /**
@@ -101,7 +108,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException("用户不存在");
         }
         BeanUtils.copyProperties(dto,user);
-        return this.updateById(user);
+        boolean success = this.updateById(user);
+        if (success) {
+            log.info("修改用户成功: userId={}", id);
+        }
+        return success;
     }
 
     /**
@@ -111,7 +122,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public boolean deleteById(Long id) {
-        return this.removeById(id);
+        boolean success = this.removeById(id);
+        if (success) {
+            log.info("删除用户成功: userId={}", id);
+        }
+        return success;
     }
 
 

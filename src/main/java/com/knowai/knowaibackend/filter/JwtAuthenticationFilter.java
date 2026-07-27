@@ -26,8 +26,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String uri = request.getRequestURI();
 
-        //1.登录接口放行
-        if (WhiteList.URL.contains(uri)){
+        //1.白名单放行
+        if (WhiteList.isWhitelisted(uri)){
             filterChain.doFilter(request,response);
             return;
         }

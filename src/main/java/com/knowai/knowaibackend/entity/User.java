@@ -45,4 +45,9 @@ public class User {
      * 创建时间
      */
     private LocalDateTime createTime;
+
+    /**
+     * 头像
+     */
+    private String avatar;
 }
