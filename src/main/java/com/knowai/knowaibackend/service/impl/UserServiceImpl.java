@@ -2,13 +2,13 @@ package com.knowai.knowaibackend.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
-import com.knowai.knowaibackend.dto.UserDTO;
+import com.knowai.knowaibackend.dto.user.UserDTO;
 import com.knowai.knowaibackend.entity.User;
 import com.knowai.knowaibackend.exception.BusinessException;
 import com.knowai.knowaibackend.mapper.UserMapper;
 import com.knowai.knowaibackend.service.UserService;
 
-import com.knowai.knowaibackend.vo.UserVO;
+import com.knowai.knowaibackend.vo.user.UserVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;

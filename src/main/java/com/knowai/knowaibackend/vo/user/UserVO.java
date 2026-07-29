@@ -1,4 +1,4 @@
-package com.knowai.knowaibackend.vo;
+package com.knowai.knowaibackend.vo.user;
 
 import lombok.Data;
 

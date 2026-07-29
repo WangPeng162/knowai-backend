@@ -1,14 +1,13 @@
 package com.knowai.knowaibackend.service;
 
 import com.baomidou.mybatisplus.spring.service.IService;
-import com.knowai.knowaibackend.common.Result;
-import com.knowai.knowaibackend.dto.LoginDTO;
-import com.knowai.knowaibackend.dto.PasswordDTO;
-import com.knowai.knowaibackend.dto.RegisterDTO;
-import com.knowai.knowaibackend.dto.UpdateUserInfoDTO;
+import com.knowai.knowaibackend.dto.user.LoginDTO;
+import com.knowai.knowaibackend.dto.user.PasswordDTO;
+import com.knowai.knowaibackend.dto.user.RegisterDTO;
+import com.knowai.knowaibackend.dto.user.UpdateUserInfoDTO;
 import com.knowai.knowaibackend.entity.User;
-import com.knowai.knowaibackend.vo.LoginVO;
-import com.knowai.knowaibackend.vo.UserInfoVO;
+import com.knowai.knowaibackend.vo.user.LoginVO;
+import com.knowai.knowaibackend.vo.user.UserInfoVO;
 
 public interface AuthService extends IService<User> {
     /**

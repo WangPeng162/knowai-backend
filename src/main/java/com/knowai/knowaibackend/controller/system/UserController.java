@@ -2,9 +2,9 @@ package com.knowai.knowaibackend.controller.system;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.knowai.knowaibackend.common.Result;
-import com.knowai.knowaibackend.dto.UserDTO;
+import com.knowai.knowaibackend.dto.user.UserDTO;
 import com.knowai.knowaibackend.service.UserService;
-import com.knowai.knowaibackend.vo.UserVO;
+import com.knowai.knowaibackend.vo.user.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

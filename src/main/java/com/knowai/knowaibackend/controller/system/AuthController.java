@@ -1,13 +1,13 @@
 package com.knowai.knowaibackend.controller.system;
 
 import com.knowai.knowaibackend.common.Result;
-import com.knowai.knowaibackend.dto.LoginDTO;
-import com.knowai.knowaibackend.dto.PasswordDTO;
-import com.knowai.knowaibackend.dto.RegisterDTO;
-import com.knowai.knowaibackend.dto.UpdateUserInfoDTO;
+import com.knowai.knowaibackend.dto.user.LoginDTO;
+import com.knowai.knowaibackend.dto.user.PasswordDTO;
+import com.knowai.knowaibackend.dto.user.RegisterDTO;
+import com.knowai.knowaibackend.dto.user.UpdateUserInfoDTO;
 import com.knowai.knowaibackend.service.AuthService;
-import com.knowai.knowaibackend.vo.LoginVO;
-import com.knowai.knowaibackend.vo.UserInfoVO;
+import com.knowai.knowaibackend.vo.user.LoginVO;
+import com.knowai.knowaibackend.vo.user.UserInfoVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

@@ -1,4 +1,4 @@
-package com.knowai.knowaibackend.dto;
+package com.knowai.knowaibackend.dto.user;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
