@@ -1,4 +1,4 @@
-package com.knowai.knowaibackend.config;
+package com.knowai.knowaibackend.config.mybatisplus;
 
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;

@@ -24,3 +24,6 @@ target/
 
 # 本地私有配置【关键！】
 src/main/resources/application-local.yml
+
+# Maven IDE 生成的临时文件
+effective-pom.xml

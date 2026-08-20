@@ -1,11 +1,16 @@
 package com.knowai.knowaibackend.controller.system;
 
 
+
+
+
+
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.knowai.knowaibackend.common.PageResult;
 import com.knowai.knowaibackend.common.Result;
 import com.knowai.knowaibackend.dto.knowledge.KnowledgeCreateDTO;
 import com.knowai.knowaibackend.dto.knowledge.KnowledgeQueryDTO;
+import com.knowai.knowaibackend.dto.knowledge_document.UploadDocumentDTO;
 import com.knowai.knowaibackend.service.KnowledgeService;
 import com.knowai.knowaibackend.vo.knowledge.KnowledgeListVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +18,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/knowledge")
@@ -33,4 +39,5 @@ public class KnowledgeController {
     public Result<PageResult<KnowledgeListVO>> page(KnowledgeQueryDTO dto){
         return Result.success(knowledgeService.listKnowledge(dto));
     }
+
 }

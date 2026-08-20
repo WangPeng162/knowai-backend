@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
@@ -20,7 +20,8 @@ public class OssUtil {
 
     public String upload(MultipartFile file, String folder) throws IOException {
         OSS ossClient  = new OSSClientBuilder().build(
-                ossProperties.getEndpoint(), ossProperties.getAccessKeyId(), ossProperties.getAccessKeySecret()
+                ossProperties.getEndpoint(), ossProperties.getAccessKeyId()
+                , ossProperties.getAccessKeySecret()
         );
 
         try {
@@ -51,5 +52,49 @@ public class OssUtil {
             //资源关闭
             ossClient.shutdown();
         }
+    }
+
+    /**
+     * 从OSS下载文件，返回输入流
+     * @param url OSS文件的完整URL
+     * @return 文件输入流
+     */
+    public InputStream download(String url) throws IOException {
+        OSS ossClient = new OSSClientBuilder().build(
+                ossProperties.getEndpoint(), ossProperties.getAccessKeyId(),
+                ossProperties.getAccessKeySecret()
+        );
+
+        // 从URL中提取objectKey
+        // URL格式: https://{bucketName}.{endpoint}/{objectKey}
+        String prefix = "https://" + ossProperties.getBucketName() + "." + ossProperties.getEndpoint() + "/";
+        if (!url.startsWith(prefix)) {
+            ossClient.shutdown();
+            throw new IOException("URL不匹配当前OSS配置: " + url);
+        }
+        String objectKey = url.substring(prefix.length());
+
+        // 返回包装流，关闭时同时关闭OSS客户端
+        InputStream rawStream = ossClient.getObject(ossProperties.getBucketName(), objectKey).getObjectContent();
+        return new InputStream() {
+            @Override
+            public int read() throws IOException {
+                return rawStream.read();
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) throws IOException {
+                return rawStream.read(b, off, len);
+            }
+
+            @Override
+            public void close() throws IOException {
+                try {
+                    rawStream.close();
+                } finally {
+                    ossClient.shutdown();
+                }
+            }
+        };
     }
 }
