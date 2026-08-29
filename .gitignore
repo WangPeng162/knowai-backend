@@ -1,0 +1,23 @@
+# ===== IDEA =====
+.idea/
+*.iml
+
+# ===== 项目本地记忆（不提交） =====
+.workbuddy/
+
+# ===== 后端 =====
+knowai-backend/target/
+*.class
+*.log
+*.dumpstream
+
+# ===== 前端 =====
+knowai-frontend/node_modules/
+knowai-frontend/dist/
+
+# ===== 敏感配置（含数据库密码 + 阿里云 AccessKey） =====
+**/application-local.yml
+
+# ===== 系统 =====
+.DS_Store
+Thumbs.db

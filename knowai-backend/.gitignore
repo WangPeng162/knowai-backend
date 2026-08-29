@@ -1,0 +1,29 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# STS工具
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IDEA
+.idea
+*.iws
+*.iml
+*.ipr
+
+# VSCode
+.vscode/
+
+# 本地私有配置【关键！】
+src/main/resources/application-local.yml
+
+# Maven IDE 生成的临时文件
+effective-pom.xml
