@@ -11,5 +11,6 @@ public interface KnowledgeChunkService extends IService<KnowledgeChunk> {
     void replaceChunks(Long documentId, List<ChunkData> chunks);
     List<KnowledgeChunk> listByDocumentId(Long documentId);
     void updateStatus(List<Long> chunkIds,Integer status);
+    List<Long> getChunkIdsByDocumentId(Long documentId);
 
 }

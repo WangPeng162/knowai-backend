@@ -39,12 +39,8 @@ public class JwtUtil {
      * @return
      */
     public static Long getUserId(String token){
-        try {
-            Claims claims = Jwts.parser().verifyWith(KEY).build().parseSignedClaims(token).getPayload();
-            return Long.valueOf(claims.getSubject());
-        } catch (JwtException e) {
-            return null;
-        }
+        Claims claims = Jwts.parser().verifyWith(KEY).build().parseSignedClaims(token).getPayload();
+        return Long.valueOf(claims.getSubject());
     }
 
 }

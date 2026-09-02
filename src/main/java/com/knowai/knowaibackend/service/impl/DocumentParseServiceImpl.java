@@ -73,14 +73,17 @@ public class DocumentParseServiceImpl implements DocumentParseService {
             //7.切分chunk
             List<ChunkData> chunks = chunkSplitter.split(pages);
 
-            //8.保存
+            //8.清理旧 embedding（必须在 replaceChunks 删旧 chunk 之前）
+            embeddingService.deleteEmbeddingByDocumentId(documentId);
+
+            //9.保存
             //chunkService.saveChunks(documentId,chunks);
             chunkService.replaceChunks(documentId,chunks);
 
-            //9.向量化
+            //10.向量化
             embeddingService.generateEmbedding(documentId);
 
-            //10.修改状态（解析成功）
+            //11.修改状态（解析成功）
             documentService.updateStatus(documentId,KnowledgeDocument.STATUS_SUCCESS);
 
         } catch (Exception e) {

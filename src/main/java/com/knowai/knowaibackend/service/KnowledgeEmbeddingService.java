@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface KnowledgeEmbeddingService extends IService<KnowledgeEmbedding> {
     void batchInsert(List<KnowledgeEmbedding> knowledgeEmbedding);
+    void deleteByChunkIds(List<Long> chunkIds);
 }

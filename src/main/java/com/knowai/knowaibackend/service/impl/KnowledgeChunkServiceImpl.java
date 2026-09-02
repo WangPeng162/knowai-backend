@@ -79,6 +79,19 @@ public class KnowledgeChunkServiceImpl extends ServiceImpl<KnowledgeChunkMapper,
         update(wrapper);
     }
 
+    @Override
+    public List<Long> getChunkIdsByDocumentId(Long documentId) {
+        //构造查询条件
+        LambdaQueryWrapper<KnowledgeChunk> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(KnowledgeChunk::getDocumentId,documentId);
+        wrapper.select(KnowledgeChunk::getId);
+        //查询
+        List<KnowledgeChunk> knowledgeChunks = knowledgeChunkMapper.selectList(wrapper);
+        //提取id
+        List<Long> chunkIds = knowledgeChunks.stream().map(KnowledgeChunk::getId).toList();
+        return chunkIds;
+    }
+
 
     private List<KnowledgeChunk> getChunks(Long documentId, List<ChunkData> chunks) {
         List<KnowledgeChunk> entities = new ArrayList<>();

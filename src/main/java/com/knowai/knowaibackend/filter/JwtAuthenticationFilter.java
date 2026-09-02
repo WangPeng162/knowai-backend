@@ -46,12 +46,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             //4.解析token
             token = token.substring(7);
             Long userId = JwtUtil.getUserId(token);
+            if (userId == null){
+                response.setStatus(401);
+                response.getWriter().write("token无效");
+                return;
+            }
             UserContext.setUserId(userId);
             //5.放行
             filterChain.doFilter(request,response);
         } catch (Exception e){
             response.setStatus(401);
-            response.getWriter().write("token无效");
+            response.getWriter().write("token无效或已过期");
         } finally {
             UserContext.remove();
         }

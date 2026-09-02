@@ -67,12 +67,19 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeMapper, Knowledge
 
     @Override
     public PageResult<KnowledgeListVO> listKnowledge(KnowledgeQueryDTO dto) {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            throw new BusinessException("用户未登录");
+        }
+
         //1. 创建分页对象（Page）
-        Page<KnowledgeBase> page = new Page<>(dto.getPageNum(), dto.getPageSize());
+        int pageNum = dto.getPageNum() == null || dto.getPageNum() < 1 ? 1 : dto.getPageNum();
+        int pageSize = dto.getPageSize() == null || dto.getPageSize() < 1 ? 20 : dto.getPageSize();
+        Page<KnowledgeBase> page = new Page<>(pageNum, pageSize);
 
         //2.创建查询条件
         LambdaQueryWrapper<KnowledgeBase> wrapper = new LambdaQueryWrapper<KnowledgeBase>()
-                .eq(KnowledgeBase::getUserId, UserContext.getUserId())
+                .eq(KnowledgeBase::getUserId, userId)
                 .like(StringUtils.hasText(dto.getKeyword()),KnowledgeBase::getName, dto.getKeyword())
                 .orderByDesc(KnowledgeBase::getUpdateTime);
 

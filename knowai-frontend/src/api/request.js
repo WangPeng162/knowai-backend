@@ -23,6 +23,13 @@ request.interceptors.response.use(
     if (res.code === 200) {
       return res
     }
+    // 后端通过 Result 返回的登录过期/未登录，统一回到登录页
+    if (res.code === 401) {
+      ElMessage.error(res.message || '登录已过期，请重新登录')
+      localStorage.removeItem('token')
+      router.push('/login')
+      return Promise.reject(new Error(res.message || '登录已过期'))
+    }
     ElMessage.error(res.message || '请求失败')
     return Promise.reject(new Error(res.message || '请求失败'))
   },
