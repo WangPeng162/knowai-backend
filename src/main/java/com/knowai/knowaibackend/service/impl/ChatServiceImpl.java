@@ -13,6 +13,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -35,6 +36,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatModel chatModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final EmbeddingModel embeddingModel;
+    private final ScoringModel scoringModel;
     private final ConcurrentHashMap<String, ChatMemory> sessionMemories =new ConcurrentHashMap<>();
 
     @Override
@@ -49,8 +51,8 @@ public class ChatServiceImpl implements ChatService {
         ChatMemory chatMemory = sessionMemories.computeIfAbsent(
                 sessionId, k -> MessageWindowChatMemory.withMaxMessages(10));
 
-        //2.构造工具（每次请求 new，knowledgeId 不同）
-        KnowledgeSearchTools tools = new KnowledgeSearchTools(embeddingModel, embeddingStore, knowledgeId);
+        //2.构造工具（每次请求 new，knowledgeId 不同；内部两级检索：粗召回20 → rerank精排 → Top-2）
+        KnowledgeSearchTools tools = new KnowledgeSearchTools(embeddingModel, embeddingStore, scoringModel, knowledgeId);
 
         //3.用 AiServices 构建 Agent
         KnowledgeAssistant assistant = AiServices.builder(KnowledgeAssistant.class)

@@ -1,0 +1,142 @@
+[
+  {
+    "question": "这所位于南宁的公办职业本科院校，最新正式对外发布的校训内容是什么？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["厚德明志 勤耕笃行"],
+    "loose": true
+  },
+  {
+    "question": "该校两块校区合计总的土地规模有多大？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["3636.7亩"],
+    "loose": true
+  },
+  {
+    "question": "哪一年国家正式批复同意设立广西农业职业技术大学？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["2021年"],
+    "loose": true
+  },
+  {
+    "question": "学校西校区坐落于南宁市的哪一条道路，完整门牌号是多少？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["大学东路176号"],
+    "loose": true
+  },
+  {
+    "question": "东校区的具体地理位置处在南宁哪个路段？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["邕武路24号"],
+    "loose": true
+  },
+  {
+    "question": "校内一共设置有多少个二级教学学院与教学部？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["12个"],
+    "loose": true
+  },
+  {
+    "question": "学校当前本科、专科两类招生专业加起来一共有多少个？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["85个"],
+    "loose": true
+  },
+  {
+    "question": "统计口径不含应届毕业生时，在校学生总规模达到多少人？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["19002人"],
+    "loose": true
+  },
+  {
+    "question": "全校在职教职工总数量为多少，其中拥有高级职称的人员有多少位？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["1506人", "578人"],
+    "loose": false
+  },
+  {
+    "question": "校内具备双师属性的教师队伍一共有多少人？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["805人"],
+    "loose": true
+  },
+  {
+    "question": "这所院校的办学源头，可以追溯到哪一个年份创办的办学机构？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["1942年"],
+    "loose": true
+  },
+  {
+    "question": "国内涉农方向的公办职业本科大学范畴内，该院校占据怎样的行业位置？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["全国第一所涉农类公办职业本科大学"],
+    "loose": true
+  },
+  {
+    "question": "校内一共建成了多少个研究院以及研究中心类科研平台？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["5个"],
+    "loose": true
+  },
+  {
+    "question": "这所院校东边那一片校园的占地面积是多少？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["2644.06亩"],
+    "loose": true
+  },
+  {
+    "question": "西边的校园地块，土地面积为多少亩？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["992.64亩"],
+    "loose": true
+  },
+  {
+    "question": "它坐落于大学东路的那一处校园叫什么？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["西校区"],
+    "loose": true
+  },
+  {
+    "question": "它设置在邕武路的校园，官方名称是什么？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["东校区"],
+    "loose": true
+  },
+  {
+    "question": "这所学校在广西本地，属于什么办学性质的本科层次职业学校？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["公办"],
+    "loose": true
+  },
+  {
+    "question": "除去本科专业，学校专科层次开设的专业数量是多少？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["18个"],
+    "loose": true
+  },
+  {
+    "question": "学校除各个二级学院之外，配套搭建起来的科研类机构总共有几家？",
+    "knowledgeId": 22,
+    "documentId": 17,
+    "answerKeywords": ["5个"],
+    "loose": true
+  }
+]
