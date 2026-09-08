@@ -18,4 +18,7 @@ public interface KnowledgeDocumentService extends IService<KnowledgeDocument> {
     DocumentDetailVO documentDetail(Long id);
 
     void updateStatus(Long documentId,Integer status);
+
+    void checkKnowledgeOwnership(Long knowledgeId);
+
 }

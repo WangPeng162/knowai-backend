@@ -1,16 +1,13 @@
 package com.knowai.knowaibackend.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.knowai.knowaibackend.domain.document.ChunkData;
 import com.knowai.knowaibackend.entity.KnowledgeChunk;
-import com.knowai.knowaibackend.exception.BusinessException;
 import com.knowai.knowaibackend.mapper.KnowledgeChunkMapper;
 import com.knowai.knowaibackend.service.KnowledgeChunkService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,10 +15,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class KnowledgeChunkServiceImpl extends ServiceImpl<KnowledgeChunkMapper, KnowledgeChunk> implements KnowledgeChunkService {
+@RequiredArgsConstructor
+public class KnowledgeChunkServiceImpl extends ServiceImpl<KnowledgeChunkMapper, KnowledgeChunk>
+        implements KnowledgeChunkService {
 
-    @Autowired
-    private KnowledgeChunkMapper knowledgeChunkMapper;
+    private final KnowledgeChunkMapper knowledgeChunkMapper;
 
     @Override
     public void saveChunks(Long documentId, List<ChunkData> chunks) {
@@ -90,6 +88,14 @@ public class KnowledgeChunkServiceImpl extends ServiceImpl<KnowledgeChunkMapper,
         //提取id
         List<Long> chunkIds = knowledgeChunks.stream().map(KnowledgeChunk::getId).toList();
         return chunkIds;
+    }
+
+    @Override
+    public void deleteByDocumentId(Long documentId) {
+        LambdaQueryWrapper<KnowledgeChunk> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(KnowledgeChunk::getDocumentId,documentId);
+        remove(wrapper);
+
     }
 
 

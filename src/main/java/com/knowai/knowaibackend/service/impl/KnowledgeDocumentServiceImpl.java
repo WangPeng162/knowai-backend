@@ -1,13 +1,16 @@
 package com.knowai.knowaibackend.service.impl;
 
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.knowai.knowaibackend.common.UserContext;
 import com.knowai.knowaibackend.dto.knowledge_document.UploadDocumentDTO;
 import com.knowai.knowaibackend.entity.KnowledgeBase;
 import com.knowai.knowaibackend.entity.KnowledgeDocument;
 import com.knowai.knowaibackend.exception.BusinessException;
 import com.knowai.knowaibackend.mapper.KnowledgeDocumentMapper;
 import com.knowai.knowaibackend.mapper.KnowledgeMapper;
+import com.knowai.knowaibackend.service.DocumentParseService;
 import com.knowai.knowaibackend.service.KnowledgeDocumentService;
+import com.knowai.knowaibackend.service.KnowledgeService;
 import com.knowai.knowaibackend.utils.OssUtil;
 import com.knowai.knowaibackend.vo.knowlegeDocument.DocumentDetailVO;
 import com.knowai.knowaibackend.vo.knowlegeDocument.DocumentListVO;
@@ -20,6 +23,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,11 +32,13 @@ import java.util.stream.Collectors;
 public class KnowledgeDocumentServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, KnowledgeDocument> implements KnowledgeDocumentService {
 
     private final OssUtil ossUtil;
-    @Autowired
-    private KnowledgeMapper knowledgeMapper;
 
-    @Autowired
-    private KnowledgeDocumentMapper knowledgeDocumentMapper;
+    private final KnowledgeMapper knowledgeMapper;
+
+    private final KnowledgeDocumentMapper knowledgeDocumentMapper;
+
+    private final KnowledgeService knowledgeService;
+
 
     @Override
     public boolean uploadDocument(UploadDocumentDTO dto, MultipartFile file) {
@@ -40,18 +46,15 @@ public class KnowledgeDocumentServiceImpl extends ServiceImpl<KnowledgeDocumentM
         //1.获取knowledgeId
         Long knowledgeId = dto.getKnowledgeId();
 
+
         //2.校验knowledgeId
         if (knowledgeId == null){
             throw new BusinessException("没有该知识库");
         }
-        //查询知识库是否存在
-        Long count = knowledgeMapper.selectCount(
-                Wrappers.<KnowledgeBase>lambdaQuery()
-                        .eq(KnowledgeBase::getId, knowledgeId)
-        );
-        if (count == 0) {
-            throw new BusinessException("指定知识库不存在");
-        }
+
+        //判断知识库是否该用户所建
+        checkKnowledgeOwnership(knowledgeId);
+
 
         //3.获取文件信息（名称、大小、类型）
         String name = file.getOriginalFilename();
@@ -103,6 +106,9 @@ public class KnowledgeDocumentServiceImpl extends ServiceImpl<KnowledgeDocumentM
             throw new BusinessException("该知识库不存在");
         }
 
+        //判断知识库是否该用户所建
+        checkKnowledgeOwnership(knowledgeId);
+
         //2.构建查询条件（根据知识库id查询，并按创建时间筛选）
         LambdaQueryWrapper<KnowledgeDocument> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeDocument::getKnowledgeId,knowledgeId);
@@ -134,6 +140,10 @@ public class KnowledgeDocumentServiceImpl extends ServiceImpl<KnowledgeDocumentM
             throw new BusinessException("该文件不存在");
         }
 
+        //判断知识库是否该用户所建
+        Long knowledgeId = document.getKnowledgeId();
+        checkKnowledgeOwnership(knowledgeId);
+
         //3.entity转换vo
         DocumentDetailVO vo = new DocumentDetailVO();
         BeanUtils.copyProperties(document,vo);
@@ -151,4 +161,15 @@ public class KnowledgeDocumentServiceImpl extends ServiceImpl<KnowledgeDocumentM
 
         updateById(document);
     }
+
+    @Override
+    public void checkKnowledgeOwnership(Long knowledgeId) {
+        Long userId = UserContext.getUserId();
+        KnowledgeBase knowledge = knowledgeService.getById(knowledgeId);
+        if (knowledge == null || !Objects.equals(knowledge.getUserId(), userId)){
+            throw new BusinessException("无权操作该知识库");
+        }
+    }
+
+
 }

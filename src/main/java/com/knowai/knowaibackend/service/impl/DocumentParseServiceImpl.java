@@ -3,17 +3,14 @@ package com.knowai.knowaibackend.service.impl;
 import com.knowai.knowaibackend.domain.document.ChunkData;
 import com.knowai.knowaibackend.domain.document.DocumentPage;
 import com.knowai.knowaibackend.entity.KnowledgeDocument;
+import com.knowai.knowaibackend.exception.BusinessException;
 import com.knowai.knowaibackend.parser.DocumentParser;
-import com.knowai.knowaibackend.service.DocumentParseService;
-import com.knowai.knowaibackend.service.EmbeddingService;
-import com.knowai.knowaibackend.service.KnowledgeChunkService;
-import com.knowai.knowaibackend.service.KnowledgeDocumentService;
+import com.knowai.knowaibackend.service.*;
 import com.knowai.knowaibackend.splitter.ChunkSplitter;
 import com.knowai.knowaibackend.utils.OssUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
@@ -21,6 +18,8 @@ import java.util.List;
 @RequiredArgsConstructor
 @Service
 public class DocumentParseServiceImpl implements DocumentParseService {
+
+    private final KnowledgeService knowledgeService;
 
     private final EmbeddingService embeddingService;
 
@@ -52,7 +51,7 @@ public class DocumentParseServiceImpl implements DocumentParseService {
         KnowledgeDocument document = documentService.getById(documentId);
 
         if (document == null){
-            throw new RuntimeException("文档不存在");
+            throw new BusinessException("文档不存在");
         }
 
         //2.修改状态（解析中）
@@ -95,6 +94,33 @@ public class DocumentParseServiceImpl implements DocumentParseService {
 
 
 
+
+    }
+
+    @Override
+    public boolean deleteDocument(Long documentId) {
+
+        //1.根据documentId查询文档
+        KnowledgeDocument document = documentService.getById(documentId);
+
+        //1.1判断
+        if (document == null){
+            throw new BusinessException("文档不存在");
+        }
+
+        //1.2拿到关联knowledge
+        Long knowledgeId = document.getKnowledgeId();
+
+        documentService.checkKnowledgeOwnership(knowledgeId);
+
+        //2.删除向量
+        embeddingService.deleteEmbeddingByDocumentId(documentId);
+
+        //3.删除chunk
+        chunkService.deleteByDocumentId(documentId);
+
+        //4.删除document
+        return documentService.removeById(documentId);
 
     }
 }
