@@ -138,5 +138,29 @@
     "documentId": 19,
     "answerKeywords": ["5个"],
     "loose": true
+  },
+  {
+    "context": "我最近在研究广西农业职业技术大学。",
+    "question": "它在国内同类高校里是什么地位？",
+    "knowledgeId": 22,
+    "documentId": 19,
+    "answerKeywords": ["全国第一所涉农类公办职业本科大学"],
+    "loose": true
+  },
+  {
+    "context": "给我讲讲广西农业职业技术大学吧。",
+    "question": "那它的占地面积大概多少？",
+    "knowledgeId": 22,
+    "documentId": 19,
+    "answerKeywords": ["3636.7亩"],
+    "loose": true
+  },
+  {
+    "context": "我们刚才聊到了广西农业职业技术大学。",
+    "question": "它是什么时候开始办专科层次教育的？",
+    "knowledgeId": 22,
+    "documentId": 19,
+    "answerKeywords": ["1960年"],
+    "loose": true
   }
 ]

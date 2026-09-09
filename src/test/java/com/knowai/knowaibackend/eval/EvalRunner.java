@@ -1,6 +1,7 @@
 package com.knowai.knowaibackend.eval;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.knowai.knowaibackend.service.QueryRewriter;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -56,6 +57,10 @@ public class EvalRunner {
     @Autowired
     private ScoringModel scoringModel;
 
+    /** 多轮指代题改写器：可选注入（指代题才用），未配置时跳过 rewrite 列 */
+    @Autowired(required = false)
+    private QueryRewriter queryRewriter;
+
     /** 单条排序流水线的统计结果 */
     static class Stats {
         final int[] hits = new int[JUDGE_K + 1]; // hits[k] = 该题在 Top-K 是否命中(0/1)
@@ -75,13 +80,18 @@ public class EvalRunner {
         // 汇总
         Stats embedTotal = new Stats();
         Stats rerankTotal = new Stats();
+        Stats rewriteTotal = new Stats();    // 仅指代题贡献（带 context 的题）
+        int rewriteDenominator = 0;          // rewrite 列的分母（指代题数）
         List<String> savedByRerank = new ArrayList<>();   // rerank 救回：embed@5 没中、rerank@5 中了
         List<String> lostByRerank = new ArrayList<>();    // rerank 搞丢：embed@5 中了、rerank@5 没中
         List<String> movedUp = new ArrayList<>();         // 排名提前：都中，但 rerank 首个命中更靠前
+        List<String> savedByRewrite = new ArrayList<>();  // rewrite 救回指代题：rerank@2 miss → rewrite@2 hit
+        List<String> rewritePrints = new ArrayList<>();   // 指代题 rewrite 后的实际改写文本（供人工审视）
 
         for (int qIndex = 0; qIndex < dataset.size(); qIndex++) {
             Map<String, Object> item = dataset.get(qIndex);
             String question = (String) item.get("question");
+            String context = (String) item.get("context"); // 多轮指代题的前文，可选
             Long knowledgeId = ((Number) item.get("knowledgeId")).longValue();
             List<String> keywords = (List<String>) item.get("answerKeywords");
             boolean loose = Boolean.TRUE.equals(item.get("loose"));
@@ -110,16 +120,47 @@ public class EvalRunner {
             Stats embedStats = judge(recallMatches, keywords, loose);
             Stats rerankStats = judge(rerankMatches, keywords, loose);
 
+            // 4.5 第三流水线（仅指代题）：先改写 query → 再走完整检索+rerank
+            Stats rewriteStats = null;
+            int rewriteFirstHitRank = -1;
+            String rewritten = null;
+            if (context != null && !context.isBlank() && queryRewriter != null) {
+                rewritten = queryRewriter.rewrite(context, question);
+                rewritePrints.add("Q" + (qIndex + 1) + ": \"" + question + "\" → \"" + rewritten + "\"");
+                Embedding rwEmbedding = embeddingModel.embed(rewritten).content();
+                EmbeddingSearchRequest.EmbeddingSearchRequestBuilder rwBuilder =
+                        EmbeddingSearchRequest.builder().queryEmbedding(rwEmbedding).maxResults(RECALL_K);
+                if (knowledgeId != null && knowledgeId > 0) {
+                    rwBuilder.filter(metadataKey("knowledgeId").isEqualTo(knowledgeId));
+                }
+                List<EmbeddingMatch<TextSegment>> rwRecall =
+                        embeddingStore.search(rwBuilder.build()).matches();
+                if (!rwRecall.isEmpty()) {
+                    List<EmbeddingMatch<TextSegment>> rwRerank = rerank(rewritten, rwRecall);
+                    rewriteStats = judge(rwRerank, keywords, loose);
+                    rewriteFirstHitRank = rewriteStats.firstHitRank;
+                    addStats(rewriteTotal, rewriteStats);
+                    rewriteDenominator++;
+                }
+            }
+
             // 5. 汇总
             addStats(embedTotal, embedStats);
             addStats(rerankTotal, rerankStats);
 
             // 6. 逐题明细 + 变化归类
-            System.out.printf("Q%-2d %s embed:  @1%s @2%s @5%s RR=%s | rerank: @1%s @2%s @5%s RR=%s | 首中 rank: %d→%d%n",
+            StringBuilder line = new StringBuilder();
+            line.append(String.format("Q%-2d %s embed:  @1%s @2%s @5%s RR=%s | rerank: @1%s @2%s @5%s RR=%s | 首中 rank: %d→%d",
                     qIndex + 1, loose ? "[宽松]" : "[严格]",
                     mark(embedStats.hits[1]), mark(embedStats.hits[2]), mark(embedStats.hits[5]), fmt(embedStats.rr),
                     mark(rerankStats.hits[1]), mark(rerankStats.hits[2]), mark(rerankStats.hits[5]), fmt(rerankStats.rr),
-                    embedStats.firstHitRank, rerankStats.firstHitRank);
+                    embedStats.firstHitRank, rerankStats.firstHitRank));
+            if (rewriteStats != null) {
+                line.append(String.format(" | rewrite: @1%s @2%s @5%s RR=%s | rank: rerank→rewrite %d→%d",
+                        mark(rewriteStats.hits[1]), mark(rewriteStats.hits[2]), mark(rewriteStats.hits[5]), fmt(rewriteStats.rr),
+                        rerankStats.firstHitRank, rewriteFirstHitRank));
+            }
+            System.out.println(line);
 
             boolean embedHit5 = embedStats.hits[5] == 1;
             boolean rerankHit5 = rerankStats.hits[5] == 1;
@@ -129,6 +170,10 @@ public class EvalRunner {
                 lostByRerank.add("Q" + (qIndex + 1));
             } else if (embedHit5 && rerankHit5 && rerankStats.rr > embedStats.rr + 0.0001) {
                 movedUp.add("Q" + (qIndex + 1) + "(" + embedStats.firstHitRank + "→" + rerankStats.firstHitRank + ")");
+            }
+            // rewrite 救回（指代题）：rerank @2 miss → rewrite @2 hit
+            if (rewriteStats != null && rewriteStats.hits[2] == 1 && rerankStats.hits[2] == 0) {
+                savedByRewrite.add("Q" + (qIndex + 1) + " (rerank rank" + rerankStats.firstHitRank + " → rewrite rank" + rewriteFirstHitRank + ")");
             }
         }
 
@@ -148,6 +193,20 @@ public class EvalRunner {
         if (!movedUp.isEmpty()) System.out.println("排名提前（都中但 rerank 首中更靠前）: " + movedUp);
         if (savedByRerank.isEmpty() && lostByRerank.isEmpty() && movedUp.isEmpty()) {
             System.out.println("（两道流水线在 @5 口径下无差异）");
+        }
+
+        // 8. 指代题 rewrite 流水线小汇总（仅在有 rewrite 数据时输出）
+        if (rewriteDenominator > 0) {
+            System.out.println();
+            System.out.println("================ 指代题 rewrite 验证（" + rewriteDenominator + " 题）================");
+            printRow("rewrite+rerank(指代题)", rewriteTotal, rewriteDenominator);
+            System.out.println("改写后实际生成的 query（人工审视 prompt 质量）：");
+            rewritePrints.forEach(s -> System.out.println("  " + s));
+            if (!savedByRewrite.isEmpty()) {
+                System.out.println("rewrite 救回（rerank@2 miss → rewrite@2 hit）: " + savedByRewrite);
+            } else {
+                System.out.println("（rewrite 在 @2 口径下未额外救回任何指代题——可能 rerank 已够、或改写 prompt 待调）");
+            }
         }
     }
 
