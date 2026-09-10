@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Service
 public class ChatServiceImpl implements ChatService {
+
     private final QueryRewriter queryRewriter;
     private final KnowledgeDocumentService knowledgeDocumentService;
     private final ChatModel chatModel;
@@ -48,6 +49,12 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public ChatResultVO ask(String question, Long knowledgeId,String sessionId) {
+
+        //0.判断知识库是否该用户所建（不传 knowledgeId = 全局检索，跳过归属校验）
+        if (knowledgeId != null && knowledgeId > 0) {
+            knowledgeDocumentService.checkKnowledgeOwnership(knowledgeId);
+        }
+
         //1.拿当前sessionId的memory（没有就创建一个）
         //（1）判断sessionId
         if (sessionId == null || sessionId.isEmpty()) {
