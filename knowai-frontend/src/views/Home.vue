@@ -42,6 +42,13 @@
               size="small"
               @click="doParse(doc)"
             >解析</el-button>
+            <el-button
+              class="doc-del"
+              link
+              type="danger"
+              size="small"
+              @click.stop="doDelete(doc)"
+            >删除</el-button>
           </div>
         </div>
       </div>
@@ -80,7 +87,7 @@
       <div class="chat-input">
         <el-input
           v-model="question"
-          placeholder="输入问题，回车发送（未选知识库将全局检索）"
+          placeholder="输入问题，回车发送（未选知识库将检索我的全部知识库）"
           @keyup.enter="send"
         />
         <el-button type="primary" :loading="sending" @click="send">发送</el-button>
@@ -108,8 +115,8 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { listKnowledge, createKnowledge, listDocuments, uploadDocument, parseDocument, chat } from '../api'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { listKnowledge, createKnowledge, listDocuments, uploadDocument, parseDocument, deleteDocument, chat } from '../api'
 
 const router = useRouter()
 
@@ -187,6 +194,22 @@ const handleUpload = async (file) => {
 const doParse = async (doc) => {
   await parseDocument(doc.id)
   ElMessage.success('解析完成')
+  await loadDocuments()
+}
+
+// 删除文档（二次确认 → 级联清向量/chunk）
+const doDelete = async (doc) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除文档「${doc.fileName}」吗？其分块与向量会一并清除，不可恢复。`,
+      '删除确认',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+  } catch (e) {
+    return // 用户取消
+  }
+  await deleteDocument(doc.id)
+  ElMessage.success('删除成功')
   await loadDocuments()
 }
 
@@ -277,6 +300,9 @@ onMounted(() => {
 .doc-status.s2 { color: #67c23a; }
 .doc-status.s1 { color: #e6a23c; }
 .doc-status.s3 { color: #f56c6c; }
+/* 删除按钮：hover 文档项才显现 */
+.doc-del { opacity: 0; pointer-events: none; transition: opacity .15s; }
+.doc-item:hover .doc-del { opacity: 1; pointer-events: auto; }
 
 .sidebar-footer { padding: 12px; border-top: 1px solid #f0f1f3; text-align: center; }
 

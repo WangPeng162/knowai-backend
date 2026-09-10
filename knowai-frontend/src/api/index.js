@@ -21,6 +21,8 @@ export const uploadDocument = (knowledgeId, file) => {
 }
 export const listDocuments = (knowledgeId) =>
   request.get('/knowledge/document', { params: { knowledgeId } })
+export const deleteDocument = (documentId) =>
+  request.delete(`/knowledge/document/${documentId}`)
 // 触发解析（解析内部会自动向量化）
 export const parseDocument = (documentId) =>
   request.post(`/document/parse/${documentId}`)
