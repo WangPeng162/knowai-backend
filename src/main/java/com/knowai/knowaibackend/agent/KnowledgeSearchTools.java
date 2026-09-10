@@ -43,43 +43,48 @@ public class KnowledgeSearchTools {
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final ScoringModel scoringModel;
-    private final Long knowledgeId;
+    private final List<Long> knowledgeIds;
     // 存本次检索最终喂给 LLM 的结果，供外部组装 references 用
     private final List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>();
 
     @Tool("在知识库中检索与问题相关的文档片段，返回片段内容")
     public String searchKnowledge(@P("要检索的问题")String query){
-        //0.有历史对话改写：含代词→补全实体；
+        //1.有历史对话改写：含代词→补全实体；
         String searchQuery = (context == null || context.isBlank()
                 ? query : queryRewriter.rewrite(context, query));
 
-        // 1. 向量化 query
+        //2.检索范围为空（用户一个知识库都没有）→ 直接返回，绝不做无过滤的全库检索
+        if (knowledgeIds == null || knowledgeIds.isEmpty()) {
+            return "资料中没有相关信息";
+        }
+
+        // 3. 向量化 query
         Response<Embedding> embed = embeddingModel.embed(searchQuery );
         Embedding content = embed.content();
 
-        // 2.【粗召回】Qdrant Top-20，带 knowledgeId 过滤（保证答案在候选池里）
+        // 4.【粗召回】Qdrant Top-20，带 knowledgeId 过滤（保证答案在候选池里）
         EmbeddingSearchRequest.EmbeddingSearchRequestBuilder builder =
                 EmbeddingSearchRequest.builder()
                         .queryEmbedding(content)
                         .maxResults(RECALL_K);
-        if (knowledgeId != null && knowledgeId > 0) {
-            builder.filter(metadataKey("knowledgeId").isEqualTo(knowledgeId));
-        }
+        // 范围内过滤：单个库/多个库统一用 isIn（此处 knowledgeIds 必非空——上面已早返回）
+        builder.filter(metadataKey("knowledgeId").isIn(knowledgeIds));
+
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(builder.build());
         List<EmbeddingMatch<TextSegment>> recallMatches = searchResult.matches();
 
-        // 候选池为空，直接告诉模型没资料
+        //5. 候选池为空，直接告诉模型没资料
         if (recallMatches.isEmpty()) {
             return "资料中没有相关信息";
         }
 
-        // 3.【精排】rerank 打分重排，取 Top-2
+        //6.【精排】rerank 打分重排，取 Top-2
         List<EmbeddingMatch<TextSegment>> finalMatches = rerank(searchQuery , recallMatches);
 
-        // 4. 保存最终结果，供外部组装 references（保持多轮累积语义）
+        //7. 保存最终结果，供外部组装 references（保持多轮累积语义）
         matches.addAll(finalMatches);
 
-        // 5. 拼 context 返回（只拼真正进 LLM 的 Top-2，噪声被挡在外面）
+        //8. 拼 context 返回（只拼真正进 LLM 的 Top-2，噪声被挡在外面）
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < finalMatches.size(); i++) {
             sb.append("[").append(i + 1).append("]")

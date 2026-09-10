@@ -2,9 +2,11 @@ package com.knowai.knowaibackend.service.impl;
 
 import com.knowai.knowaibackend.agent.KnowledgeAssistant;
 import com.knowai.knowaibackend.agent.KnowledgeSearchTools;
+import com.knowai.knowaibackend.common.UserContext;
 import com.knowai.knowaibackend.entity.KnowledgeDocument;
 import com.knowai.knowaibackend.service.ChatService;
 import com.knowai.knowaibackend.service.KnowledgeDocumentService;
+import com.knowai.knowaibackend.service.KnowledgeService;
 import com.knowai.knowaibackend.service.QueryRewriter;
 import com.knowai.knowaibackend.vo.chat.ChatResultVO;
 import com.knowai.knowaibackend.vo.chat.ReferenceVO;
@@ -24,6 +26,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.knowai.knowaibackend.entity.KnowledgeBase;
 
 import java.util.List;
 import java.util.Set;
@@ -39,6 +42,7 @@ import java.util.stream.Collectors;
 @Service
 public class ChatServiceImpl implements ChatService {
 
+    private final KnowledgeService knowledgeService;
     private final QueryRewriter queryRewriter;
     private final KnowledgeDocumentService knowledgeDocumentService;
     private final ChatModel chatModel;
@@ -50,9 +54,20 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public ChatResultVO ask(String question, Long knowledgeId,String sessionId) {
 
-        //0.判断知识库是否该用户所建（不传 knowledgeId = 全局检索，跳过归属校验）
+        //0. 确定检索范围：传了 knowledgeId → 只搜它（并校验归属）；没传 → 搜当前用户全部知识库
+        List<Long> scope;
         if (knowledgeId != null && knowledgeId > 0) {
             knowledgeDocumentService.checkKnowledgeOwnership(knowledgeId);
+            scope = List.of(knowledgeId);
+        } else {
+            // 查当前用户名下所有知识库，只取 id（select 只查一列，省带宽）
+            scope = knowledgeService.lambdaQuery()
+                    .select(KnowledgeBase::getId)
+                    .eq(KnowledgeBase::getUserId, UserContext.getUserId())
+                    .list()
+                    .stream()
+                    .map(KnowledgeBase::getId)
+                    .toList();
         }
 
         //1.拿当前sessionId的memory（没有就创建一个）
@@ -69,7 +84,7 @@ public class ChatServiceImpl implements ChatService {
         String context = buildContext(chatMemory);
 
         KnowledgeSearchTools tools = new
-                KnowledgeSearchTools(context, queryRewriter, embeddingModel, embeddingStore, scoringModel, knowledgeId);
+                KnowledgeSearchTools(context, queryRewriter, embeddingModel, embeddingStore, scoringModel, scope);
 
         //3.用 AiServices 构建 Agent
         KnowledgeAssistant assistant = AiServices.builder(KnowledgeAssistant.class)
