@@ -1,5 +1,6 @@
 package com.knowai.knowaibackend.agent;
 
+import com.knowai.knowaibackend.service.QueryRewriter;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.embedding.Embedding;
@@ -37,6 +38,8 @@ public class KnowledgeSearchTools {
     /** 精排后真正进 LLM 的条数（保持线上 Top-2 不变，token 成本不涨） */
     private static final int FINAL_K = 2;
 
+    private final String context;
+    private final QueryRewriter queryRewriter;
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final ScoringModel scoringModel;
@@ -46,8 +49,12 @@ public class KnowledgeSearchTools {
 
     @Tool("在知识库中检索与问题相关的文档片段，返回片段内容")
     public String searchKnowledge(@P("要检索的问题")String query){
+        //0.有历史对话改写：含代词→补全实体；
+        String searchQuery = (context == null || context.isBlank()
+                ? query : queryRewriter.rewrite(context, query));
+
         // 1. 向量化 query
-        Response<Embedding> embed = embeddingModel.embed(query);
+        Response<Embedding> embed = embeddingModel.embed(searchQuery );
         Embedding content = embed.content();
 
         // 2.【粗召回】Qdrant Top-20，带 knowledgeId 过滤（保证答案在候选池里）
@@ -67,20 +74,20 @@ public class KnowledgeSearchTools {
         }
 
         // 3.【精排】rerank 打分重排，取 Top-2
-        List<EmbeddingMatch<TextSegment>> finalMatches = rerank(query, recallMatches);
+        List<EmbeddingMatch<TextSegment>> finalMatches = rerank(searchQuery , recallMatches);
 
         // 4. 保存最终结果，供外部组装 references（保持多轮累积语义）
         matches.addAll(finalMatches);
 
         // 5. 拼 context 返回（只拼真正进 LLM 的 Top-2，噪声被挡在外面）
-        StringBuilder context = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < finalMatches.size(); i++) {
-            context.append("[").append(i + 1).append("]")
+            sb.append("[").append(i + 1).append("]")
                     .append(finalMatches.get(i).embedded().text())
                     .append("\n\n");
         }
 
-        return context.toString();
+        return sb.toString();
     }
 
     /** 粗召回结果 → rerank 打分 → 按分降序取 Top-2 */

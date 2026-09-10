@@ -5,9 +5,14 @@ import com.knowai.knowaibackend.agent.KnowledgeSearchTools;
 import com.knowai.knowaibackend.entity.KnowledgeDocument;
 import com.knowai.knowaibackend.service.ChatService;
 import com.knowai.knowaibackend.service.KnowledgeDocumentService;
+import com.knowai.knowaibackend.service.QueryRewriter;
 import com.knowai.knowaibackend.vo.chat.ChatResultVO;
 import com.knowai.knowaibackend.vo.chat.ReferenceVO;
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -20,10 +25,11 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -32,6 +38,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Service
 public class ChatServiceImpl implements ChatService {
+    private final QueryRewriter queryRewriter;
     private final KnowledgeDocumentService knowledgeDocumentService;
     private final ChatModel chatModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
@@ -52,7 +59,10 @@ public class ChatServiceImpl implements ChatService {
                 sessionId, k -> MessageWindowChatMemory.withMaxMessages(10));
 
         //2.构造工具（每次请求 new，knowledgeId 不同；内部两级检索：粗召回20 → rerank精排 → Top-2）
-        KnowledgeSearchTools tools = new KnowledgeSearchTools(embeddingModel, embeddingStore, scoringModel, knowledgeId);
+        String context = buildContext(chatMemory);
+
+        KnowledgeSearchTools tools = new
+                KnowledgeSearchTools(context, queryRewriter, embeddingModel, embeddingStore, scoringModel, knowledgeId);
 
         //3.用 AiServices 构建 Agent
         KnowledgeAssistant assistant = AiServices.builder(KnowledgeAssistant.class)
@@ -98,5 +108,40 @@ public class ChatServiceImpl implements ChatService {
         result.setReferences(references);
 
         return result;
+    }
+
+    private String buildContext(ChatMemory chatMemory){
+        List<ChatMessage> allMsg = chatMemory.messages();
+        if (allMsg == null || allMsg.isEmpty()) {
+            return null;
+        }
+
+        List<ChatMessage> collectList = new ArrayList<>();
+        //从末尾向前遍历，最多收集6条有效消息
+        for (int i = allMsg.size()-1; i >= 0 && collectList.size() < 6; i--) {
+            ChatMessage message = allMsg.get(i);
+            //跳过SystemMessage
+            if (message instanceof SystemMessage){
+                continue;
+            }
+            collectList.add(message);
+        }
+
+        //反转，恢复时间正序
+        Collections.reverse(collectList);
+
+        StringBuilder sb = new StringBuilder();
+        for (ChatMessage msg : collectList) {
+            if (msg instanceof UserMessage userMessage){
+                sb.append("用户：").append(userMessage.singleText()).append("\n");
+            }else if (msg instanceof AiMessage aiMessage){
+                sb.append("助手：").append(aiMessage.text()).append("\n");
+            }
+        }
+
+        String contextStr = sb.toString().trim();
+        //空内容返回null
+        return contextStr.isBlank() ? null : contextStr;
+
     }
 }
