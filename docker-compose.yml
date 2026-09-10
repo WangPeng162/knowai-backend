@@ -1,0 +1,94 @@
+# ============================================================
+# KnowAI 一键部署编排（本地 Docker 与云服务器通用）
+#
+#   docker compose up -d --build    启动全部服务
+#   docker compose logs -f backend  跟踪后端日志
+#   docker compose down             停止（数据保留在卷里）
+#   docker compose down -v          停止并删除数据卷（慎用）
+#
+# 服务间通过"服务名"互相访问（容器网络内置 DNS）：
+#   前端 nginx → backend:8080 ；后端 → mysql:3306 / qdrant:6334
+# ============================================================
+
+services:
+  # ---------- 业务数据库 ----------
+  mysql:
+    image: mysql:8.0
+    container_name: knowai-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-knowai123}
+      MYSQL_DATABASE: knowai
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # 首次启动自动执行建表脚本（仅当数据卷为空时）
+      - ./deploy/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      # 宿主端口避开本机已装的 MySQL（3306）
+      - "${MYSQL_PORT:-3307}:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ---------- 向量数据库 ----------
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: knowai-qdrant
+    volumes:
+      - qdrant-data:/qdrant/storage
+    ports:
+      # 仅暴露 HTTP（6333）便于调试；后端走容器网络用 gRPC(6334)
+      - "${QDRANT_HTTP_PORT:-6333}:6333"
+
+  # ---------- 后端服务 ----------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: knowai-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    environment:
+      # 激活 docker profile（容器内配置全部来自环境变量，不使用本地配置文件）
+      SPRING_PROFILES_ACTIVE: docker
+      # Spring Boot 环境变量优先级高于配置文件，直接覆盖数据源
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/knowai?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-knowai123}
+      # 向量库地址（容器名，不是 localhost）
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6334
+      # 大模型与对象存储（从 .env 注入，绝不写进镜像）
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
+      ALIYUN_OSS_ENDPOINT: ${ALIYUN_OSS_ENDPOINT}
+      ALIYUN_OSS_ACCESSKEYID: ${ALIYUN_OSS_ACCESS_KEY_ID}
+      ALIYUN_OSS_ACCESSKEYSECRET: ${ALIYUN_OSS_ACCESS_KEY_SECRET}
+      ALIYUN_OSS_BUCKETNAME: ${ALIYUN_OSS_BUCKET_NAME}
+      TZ: Asia/Shanghai
+    ports:
+      # 仅供本机调试（Swagger 等）；前端通过容器网络访问后端
+      - "${BACKEND_PORT:-18080}:8080"
+
+  # ---------- 前端 + 网关 ----------
+  web:
+    build:
+      context: ./knowai-frontend
+      dockerfile: Dockerfile
+    container_name: knowai-web
+    depends_on:
+      - backend
+    ports:
+      - "${WEB_PORT:-8000}:80"
+
+volumes:
+  mysql-data:
+  qdrant-data:

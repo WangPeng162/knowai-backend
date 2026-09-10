@@ -1,0 +1,22 @@
+# 构建产物与依赖
+target/
+knowai-frontend/node_modules/
+knowai-frontend/dist/
+
+# 版本控制与 IDE
+.git/
+.gitignore
+.idea/
+*.iml
+.workbuddy/
+
+# 文档与非运行时资源
+HELP.md
+docs/
+eval/
+deploy/
+*.md
+*.log
+
+# ★ 关键：本地敏感配置不打进镜像（容器内一律用环境变量注入）
+src/main/resources/application-local.yml
