@@ -57,7 +57,8 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                     Metadata metadata = new Metadata();
                     metadata.put("chunkId", knowledgeChunk.getId());
                     metadata.put("documentId", knowledgeChunk.getDocumentId());
-                    metadata.put("pageNumber", knowledgeChunk.getPageNumber());
+                    metadata.put("pageNumber", knowledgeChunk.getPageNumber() == null
+                            ? 1 : knowledgeChunk.getPageNumber());  // 防御历史 null 页码数据
                     metadata.put("knowledgeId", knowledgeId);
 
                     return TextSegment.from(knowledgeChunk.getContent(), metadata);
@@ -127,8 +128,10 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         List<KnowledgeEmbedding> embeddingList = knowledgeEmbeddingMapper.selectList(wrapper);
         List<String> vectorIds = embeddingList.stream().map(KnowledgeEmbedding::getVectorId).toList();
 
-        // 3. 删 Qdrant 向量
-        embeddingStore.removeAll(vectorIds);
+        // 3. 删 Qdrant 向量（无向量记录时跳过——空集合调用会报错，且本就无物可删）
+        if (!vectorIds.isEmpty()) {
+            embeddingStore.removeAll(vectorIds);
+        }
 
         // 4. 删映射记录
         knowledgeEmbeddingService.deleteByChunkIds(chunkIds);

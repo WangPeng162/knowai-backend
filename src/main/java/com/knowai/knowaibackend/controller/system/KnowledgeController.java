@@ -11,6 +11,7 @@ import com.knowai.knowaibackend.common.Result;
 import com.knowai.knowaibackend.dto.knowledge.KnowledgeCreateDTO;
 import com.knowai.knowaibackend.dto.knowledge.KnowledgeQueryDTO;
 import com.knowai.knowaibackend.dto.knowledge_document.UploadDocumentDTO;
+import com.knowai.knowaibackend.service.KnowledgeEditService;
 import com.knowai.knowaibackend.service.KnowledgeService;
 import com.knowai.knowaibackend.vo.knowledge.KnowledgeListVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +28,9 @@ public class KnowledgeController {
     @Autowired
     private KnowledgeService knowledgeService;
 
+    @Autowired
+    private KnowledgeEditService knowledgeEditService;
+
     @Operation(summary = "创建知识库")
     @PostMapping()
     public Result<String> createKnowledge(@Valid @RequestBody KnowledgeCreateDTO dto){
@@ -38,6 +42,13 @@ public class KnowledgeController {
     @GetMapping("/list")
     public Result<PageResult<KnowledgeListVO>> page(KnowledgeQueryDTO dto){
         return Result.success(knowledgeService.listKnowledge(dto));
+    }
+
+    @Operation(summary = "删除知识库")
+    @DeleteMapping("/{id}")
+    public Result<String> deleteKnowledge(@PathVariable Long id){
+        knowledgeEditService.deleteKnowledge(id);
+        return Result.success("删除成功");
     }
 
 }

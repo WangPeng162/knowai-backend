@@ -18,6 +18,13 @@
         >
           <el-icon><Folder /></el-icon>
           <span class="kb-name">{{ kb.name }}</span>
+          <el-button
+            class="kb-del"
+            link
+            type="danger"
+            size="small"
+            @click.stop="doDeleteKb(kb)"
+          >删除</el-button>
         </div>
       </div>
 
@@ -116,7 +123,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listKnowledge, createKnowledge, listDocuments, uploadDocument, parseDocument, deleteDocument, chat } from '../api'
+import { listKnowledge, createKnowledge, listDocuments, uploadDocument, parseDocument, deleteDocument, deleteKnowledge, chat } from '../api'
 
 const router = useRouter()
 
@@ -213,6 +220,29 @@ const doDelete = async (doc) => {
   await loadDocuments()
 }
 
+// 删除知识库（连带库内所有文档、chunk、向量）
+const doDeleteKb = async (kb) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除知识库「${kb.name}」吗？库内所有文档及其分块、向量都会被清除，不可恢复。`,
+      '删除知识库',
+      { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' }
+    )
+  } catch (e) {
+    return // 用户取消
+  }
+  await deleteKnowledge(kb.id)
+  ElMessage.success('知识库已删除')
+  // 若删的是当前选中的库，清空右侧对话与文档状态
+  if (currentKbId.value === kb.id) {
+    currentKbId.value = null
+    currentKbName.value = ''
+    documents.value = []
+    messages.value = []
+  }
+  await loadKnowledge()
+}
+
 const scrollToBottom = async () => {
   await nextTick()
   if (msgContainer.value) {
@@ -288,7 +318,10 @@ onMounted(() => {
 }
 .kb-item:hover { background: #f5f6f8; }
 .kb-item.active { background: #e8f3ff; color: #409eff; }
-.kb-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 知识库删除按钮：hover 列表项才显现 */
+.kb-del { opacity: 0; pointer-events: none; transition: opacity .15s; }
+.kb-item:hover .kb-del { opacity: 1; pointer-events: auto; }
 .empty { color: #999; text-align: center; padding: 20px; font-size: 13px; }
 
 .doc-section { border-top: 1px solid #f0f1f3; padding: 12px 8px; max-height: 300px; overflow-y: auto; }

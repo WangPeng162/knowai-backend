@@ -18,7 +18,8 @@ public class TxtParser implements DocumentParser{
 
         //2.封装DocumentPage
         DocumentPage page = new DocumentPage();
-        page.setPageNumber(null);
+        // txt 无分页概念，统一记第 1 页（下游 metadata/references 依赖页码非 null）
+        page.setPageNumber(1);
         page.setContent(text);
 
         //3.返回

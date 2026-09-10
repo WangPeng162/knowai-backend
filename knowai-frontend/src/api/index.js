@@ -9,6 +9,7 @@ export const createKnowledge = (data) => request.post('/knowledge', data)
 export const listKnowledge = () => request.get('/knowledge/list', {
   params: { pageNum: 1, pageSize: 20 }
 })
+export const deleteKnowledge = (knowledgeId) => request.delete(`/knowledge/${knowledgeId}`)
 
 // ===== 文档 =====
 export const uploadDocument = (knowledgeId, file) => {
