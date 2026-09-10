@@ -14,9 +14,11 @@ knowai-frontend/dist/
 HELP.md
 docs/
 eval/
-deploy/
 *.md
 *.log
+
+# 数据库初始化脚本（由 mysql 容器挂载读取，不需要进构建上下文）
+deploy/init/
 
 # ★ 关键：本地敏感配置不打进镜像（容器内一律用环境变量注入）
 src/main/resources/application-local.yml

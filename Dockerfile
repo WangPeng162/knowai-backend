@@ -10,6 +10,9 @@
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /build
 
+# 配置阿里云 Maven 镜像（国内构建提速，避免拉 Maven Central 超时）
+COPY deploy/maven-settings.xml /root/.m2/settings.xml
+
 # 先只复制 pom 并预下载依赖：依赖不变时可复用缓存层，改代码不用重新下载
 COPY pom.xml .
 RUN mvn -B -q dependency:go-offline
