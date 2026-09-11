@@ -1,7 +1,10 @@
 <template>
   <div class="home">
-    <!-- 左侧栏 -->
-    <div class="sidebar">
+    <!-- 移动端遮罩：点击任意处关闭侧边栏 -->
+    <div v-if="isMobile && sidebarOpen" class="overlay" @click="sidebarOpen = false"></div>
+
+    <!-- 左侧栏（移动端为抽屉式：默认收起，点左上角按钮滑出） -->
+    <div class="sidebar" :class="{ 'sidebar-open': sidebarOpen }">
       <div class="sidebar-header">
         <h3>知识库</h3>
         <el-button type="primary" size="small" @click="openCreate">新建</el-button>
@@ -68,7 +71,8 @@
     <!-- 右侧对话区 -->
     <div class="chat-area">
       <div class="chat-header">
-        <h3>{{ currentKbName || '请选择左侧知识库开始对话' }}</h3>
+        <el-button v-if="isMobile" class="menu-btn" text @click="sidebarOpen = true">☰</el-button>
+        <h3 class="chat-title">{{ currentKbName || '请选择知识库开始对话' }}</h3>
         <el-button size="small" @click="newChat">新对话</el-button>
       </div>
 
@@ -120,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listKnowledge, createKnowledge, listDocuments, uploadDocument, parseDocument, deleteDocument, deleteKnowledge, chat } from '../api'
@@ -141,6 +145,15 @@ const showCreate = ref(false)
 const creating = ref(false)
 const kbForm = reactive({ name: '', description: '' })
 
+// ===== 移动端适配 =====
+const isMobile = ref(window.innerWidth <= 768)   // 是否窄屏（手机/小屏）
+const sidebarOpen = ref(false)                    // 移动端侧边栏抽屉是否展开
+
+const onResize = () => {
+  isMobile.value = window.innerWidth <= 768
+  if (!isMobile.value) sidebarOpen.value = false  // 回到宽屏自动收起抽屉
+}
+
 const statusMap = { 0: '待解析', 1: '解析中', 2: '已完成', 3: '失败' }
 const statusText = (s) => statusMap[s] || '未知'
 
@@ -159,6 +172,7 @@ const selectKb = async (kb) => {
   currentKbId.value = kb.id
   currentKbName.value = kb.name
   await loadDocuments()
+  if (isMobile.value) sidebarOpen.value = false   // 移动端选完自动收起抽屉
 }
 
 const loadDocuments = async () => {
@@ -280,6 +294,11 @@ const logout = () => {
 onMounted(() => {
   sessionId.value = genSessionId()
   loadKnowledge()
+  window.addEventListener('resize', onResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
 })
 </script>
 
@@ -387,5 +406,59 @@ onMounted(() => {
   padding: 16px 20px;
   background: #fff;
   border-top: 1px solid #e5e6eb;
+}
+
+/* ============================================================
+   移动端适配（窄屏 ≤768px）
+   - 侧边栏改为抽屉式：默认移出屏幕外，加 .sidebar-open 才滑入
+   - 聊天区占满全宽，同时压缩气泡/头像/间距，给对话留出空间
+   ============================================================ */
+.chat-header .menu-btn {
+  font-size: 20px;
+  padding: 0 6px;
+  margin-right: 4px;
+}
+.chat-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  /* 遮罩层 */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .35);
+    z-index: 199;
+  }
+
+  /* 侧边栏 → 抽屉 */
+  .sidebar {
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    width: 82vw;
+    max-width: 320px;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    box-shadow: 2px 0 16px rgba(0, 0, 0, .18);
+  }
+  .sidebar.sidebar-open { transform: translateX(0); }
+  /* 抽屉打开时，删除按钮常显（手机没有 hover） */
+  .sidebar-open .kb-del,
+  .sidebar-open .doc-del { opacity: 1; pointer-events: auto; }
+
+  /* 聊天区紧凑化 */
+  .chat-header { height: 50px; padding: 0 10px; }
+  .chat-header h3 { font-size: 15px; }
+  .chat-messages { padding: 12px 10px; }
+  .message { gap: 8px; margin-bottom: 14px; }
+  .avatar { width: 30px; height: 30px; font-size: 12px; }
+  .bubble { max-width: 84%; padding: 10px 12px; font-size: 14px; }
+  .ref-item { align-items: flex-start; }
+  .chat-input { padding: 10px; gap: 8px; }
+  .chat-input .el-input { flex: 1; }
 }
 </style>

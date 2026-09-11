@@ -14,6 +14,7 @@ services:
   # ---------- 业务数据库 ----------
   mysql:
     image: mysql:8.0
+    restart: unless-stopped
     container_name: knowai-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-knowai123}
@@ -39,6 +40,7 @@ services:
   # ---------- 向量数据库 ----------
   qdrant:
     image: qdrant/qdrant:latest
+    restart: unless-stopped
     container_name: knowai-qdrant
     volumes:
       - qdrant-data:/qdrant/storage
@@ -51,6 +53,7 @@ services:
     # 显式命名镜像：不依赖 compose 项目名（目录名），
     # 使"本地构建好的镜像可搬运到服务器 load 后直接复用"
     image: knowai-backend:latest
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
@@ -84,6 +87,7 @@ services:
   # ---------- 前端 + 网关 ----------
   web:
     image: knowai-web:latest
+    restart: unless-stopped
     build:
       context: ./knowai-frontend
       dockerfile: Dockerfile
