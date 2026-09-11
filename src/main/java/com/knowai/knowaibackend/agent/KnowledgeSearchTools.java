@@ -13,6 +13,7 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,6 +30,7 @@ import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metad
  *  - rerank(ScoringModel) 把 query 和每个候选 chunk 拼接后整体打分，能判断"是否答了问题"，
  *    把最相关的顶到最前（精度），再把噪声挡在 LLM 上下文之外
  */
+@Slf4j
 @SuppressWarnings("all")
 @RequiredArgsConstructor
 public class KnowledgeSearchTools {
@@ -37,6 +39,16 @@ public class KnowledgeSearchTools {
     private static final int RECALL_K = 20;
     /** 精排后真正进 LLM 的条数（保持线上 Top-2 不变，token 成本不涨） */
     private static final int FINAL_K = 2;
+    /**
+     * rerank 相关性阈值：低于此分视为"与用户问题无关"，直接丢弃，不给 LLM。
+     *
+     * 为什么需要它：向量检索"永远有结果"——无关问题（如"如何赚钱"）也会返回 Top-K，
+     * 模型拿到这些"看起来像资料"的内容就容易答非所问。这道硬门槛不依赖模型自觉。
+     *
+     * 取值依据：gte-rerank-v2 输出 0~1 相关性分。需结合评估集实测（看日志中的分数分布）：
+     * 正常命中通常 0.7+，无关问题一般 < 0.5，两者之间取阈值。
+     */
+    private static final double SCORE_THRESHOLD = 0.3;
 
     private final String context;
     private final QueryRewriter queryRewriter;
@@ -78,8 +90,14 @@ public class KnowledgeSearchTools {
             return "资料中没有相关信息";
         }
 
-        //6.【精排】rerank 打分重排，取 Top-2
-        List<EmbeddingMatch<TextSegment>> finalMatches = rerank(searchQuery , recallMatches);
+        //6.【精排】rerank 打分重排，取 Top-2（并过滤掉低于相关性阈值的片段）
+        List<EmbeddingMatch<TextSegment>> finalMatches = rerank(searchQuery, recallMatches);
+
+        //6.5 精排后没有一条达到相关性阈值 → 说明知识库里没有与这个问题相关的资料
+        if (finalMatches.isEmpty()) {
+            log.info("[检索] 全部候选低于阈值，判定为无相关资料: query='{}'", searchQuery);
+            return "资料中没有相关信息";
+        }
 
         //7. 保存最终结果，供外部组装 references（保持多轮累积语义）
         matches.addAll(finalMatches);
@@ -123,12 +141,25 @@ public class KnowledgeSearchTools {
         }
         order.sort(Comparator.comparingDouble((Integer i) -> scores.get(i)).reversed());
 
-        // （4）取分数最高的前 FINAL_K 条
+        // （4）取分数最高的前 FINAL_K 条；低于相关性阈值的直接丢弃（与问题无关，不进 LLM）
         List<EmbeddingMatch<TextSegment>> finalMatches = new ArrayList<>();
         int n = Math.min(FINAL_K, order.size());
         for (int i = 0; i < n; i++) {
-            finalMatches.add(recallMatches.get(order.get(i)));
+            int idx = order.get(i);
+            double score = scores.get(idx);
+            if (score < SCORE_THRESHOLD) {
+                continue;
+            }
+            finalMatches.add(recallMatches.get(idx));
         }
+
+        // （5）打印分数分布，便于线上观察阈值是否合理（可用日志调参）
+        log.info("[检索] query='{}' 候选{}条 分数Top{}={} 通过阈值{}条(阈值={})",
+                query, recallMatches.size(),
+                Math.min(3, order.size()),
+                order.stream().limit(3).map(i -> String.format("%.4f", scores.get(i))).toList(),
+                finalMatches.size(), SCORE_THRESHOLD);
+
         return finalMatches;
     }
 

@@ -15,4 +15,9 @@ public class RegisterDTO {
 
     @NotBlank(message = "昵称不能为空")
     private String nickname;
+
+    /**
+     * 邀请码：仅当后端配置了 knowai.invite-code 时才校验（本地开发不配则跳过）
+     */
+    private String inviteCode;
 }

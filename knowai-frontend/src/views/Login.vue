@@ -11,6 +11,9 @@
         <el-form-item v-if="!isLogin" prop="nickname">
           <el-input v-model="form.nickname" placeholder="昵称" :prefix-icon="Avatar" />
         </el-form-item>
+        <el-form-item v-if="!isLogin" prop="inviteCode">
+          <el-input v-model="form.inviteCode" placeholder="邀请码（注册需要）" :prefix-icon="Key" />
+        </el-form-item>
         <el-form-item prop="password">
           <el-input v-model="form.password" type="password" placeholder="密码" :prefix-icon="Lock" show-password />
         </el-form-item>
@@ -30,7 +33,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, Lock, Avatar } from '@element-plus/icons-vue'
+import { User, Lock, Avatar, Key } from '@element-plus/icons-vue'
 import { login, register } from '../api'
 
 const router = useRouter()
@@ -38,7 +41,7 @@ const formRef = ref()
 const loading = ref(false)
 const isLogin = ref(true)
 
-const form = reactive({ username: '', password: '', nickname: '' })
+const form = reactive({ username: '', password: '', nickname: '', inviteCode: '' })
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -61,7 +64,12 @@ const submit = async () => {
       ElMessage.success('登录成功')
       router.push('/home')
     } else {
-      await register({ username: form.username, password: form.password, nickname: form.nickname })
+      await register({
+        username: form.username,
+        password: form.password,
+        nickname: form.nickname,
+        inviteCode: form.inviteCode
+      })
       ElMessage.success('注册成功，请登录')
       isLogin.value = true
       form.password = ''

@@ -18,8 +18,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -31,6 +33,13 @@ public class AuthServiceImpl extends ServiceImpl<UserMapper, User> implements Au
     private UserMapper userMapper;
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    /**
+     * 注册邀请码（防止公开注册被陌生人消耗 LLM 额度）。
+     * 为空则不校验 —— 本地开发方便；线上通过环境变量 KNOWAI_INVITE_CODE 注入。
+     */
+    @Value("${knowai.invite-code:}")
+    private String inviteCode;
 
 
     @Override
@@ -68,6 +77,11 @@ public class AuthServiceImpl extends ServiceImpl<UserMapper, User> implements Au
 
     @Override
     public Boolean register(RegisterDTO dto) {
+        //0.邀请码校验（后端配了邀请码才校验；未配置则放行，便于本地开发）
+        if (StringUtils.hasText(inviteCode) && !inviteCode.equals(dto.getInviteCode())) {
+            throw new BusinessException("邀请码错误，无法注册");
+        }
+
         //1.查询用户名是否存在
         User exist =
                 userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, dto.getUsername()));

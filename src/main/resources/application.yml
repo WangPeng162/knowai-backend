@@ -22,6 +22,11 @@ logging:
     com.knowai.knowaibackend: debug
     root: info
 
+# 业务自定义配置
+knowai:
+  # 注册邀请码：为空则不校验（本地开发）；线上由环境变量 KNOWAI_INVITE_CODE 注入
+  invite-code: ${KNOWAI_INVITE_CODE:}
+
 # Swagger/OpenAPI
 springdoc:
   swagger-ui:
