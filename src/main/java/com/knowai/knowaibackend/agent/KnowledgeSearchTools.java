@@ -45,10 +45,16 @@ public class KnowledgeSearchTools {
      * 为什么需要它：向量检索"永远有结果"——无关问题（如"如何赚钱"）也会返回 Top-K，
      * 模型拿到这些"看起来像资料"的内容就容易答非所问。这道硬门槛不依赖模型自觉。
      *
-     * 取值依据：gte-rerank-v2 输出 0~1 相关性分。需结合评估集实测（看日志中的分数分布）：
-     * 正常命中通常 0.7+，无关问题一般 < 0.5，两者之间取阈值。
+     * 取值依据（ThresholdCalibrator 实测 2026-09-13）：
+     *   正样本（库内确有答案，23 题）rerank top1 分数：min=0.1517  avg=0.2907  max=0.5992
+     *   负样本（与库完全无关，5 题）  rerank top1 分数：min=0.0059  avg=0.0061  max=0.0064
+     *   安全区间 (0.0064, 0.1517) → 取中点 0.08（两侧余量各约 0.07）
+     *
+     * ⚠️ 不要把阈值定得太高：gte-rerank-v2 的分数整体偏低（命中题 top1 常见 0.15~0.6），
+     *    阈值过高会把"问法稍绕"的正常问题也判成"无相关资料"——而用户会误以为知识库里没有内容，
+     *    这比"答非所问"更隐蔽、更难发现。
      */
-    private static final double SCORE_THRESHOLD = 0.3;
+    private static final double SCORE_THRESHOLD = 0.08;
 
     private final String context;
     private final QueryRewriter queryRewriter;

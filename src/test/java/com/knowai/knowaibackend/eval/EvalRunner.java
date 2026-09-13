@@ -81,6 +81,11 @@ public class EvalRunner {
         Stats embedTotal = new Stats();
         Stats rerankTotal = new Stats();
         Stats rewriteTotal = new Stats();    // 仅指代题贡献（带 context 的题）
+        // 知识题（无 context）单独汇总：避免与指代题混算导致口径误读
+        // （指代题在未改写时命中率天然偏低，混进分母会拉低整体数字）
+        Stats normalEmbedTotal = new Stats();
+        Stats normalRerankTotal = new Stats();
+        int normalCount = 0;
         int rewriteDenominator = 0;          // rewrite 列的分母（指代题数）
         List<String> savedByRerank = new ArrayList<>();   // rerank 救回：embed@5 没中、rerank@5 中了
         List<String> lostByRerank = new ArrayList<>();    // rerank 搞丢：embed@5 中了、rerank@5 没中
@@ -147,6 +152,12 @@ public class EvalRunner {
             // 5. 汇总
             addStats(embedTotal, embedStats);
             addStats(rerankTotal, rerankStats);
+            // 分开统计：无 context 的题属于"知识题"
+            if (context == null || context.isBlank()) {
+                addStats(normalEmbedTotal, embedStats);
+                addStats(normalRerankTotal, rerankStats);
+                normalCount++;
+            }
 
             // 6. 逐题明细 + 变化归类
             StringBuilder line = new StringBuilder();
@@ -180,14 +191,24 @@ public class EvalRunner {
         // 7. 汇总输出
         System.out.println();
         System.out.println("================ 汇总对比 ================");
+        System.out.println("【分开统计 —— 推荐看这一组】");
+        if (normalCount > 0) {
+            System.out.println("--- 知识题 " + normalCount + " 题（库内确有答案，衡量检索质量）---");
+            printRow("embedding 直排", normalEmbedTotal, normalCount);
+            printRow("embedding+rerank", normalRerankTotal, normalCount);
+            System.out.printf("  → HitRate@1 提升 %+.1f%%   @2 提升 %+.1f%%   @5 提升 %+.1f%%   MRR 提升 %+.4f%n",
+                    (normalRerankTotal.hits[1] - normalEmbedTotal.hits[1]) * 100.0 / normalCount,
+                    (normalRerankTotal.hits[2] - normalEmbedTotal.hits[2]) * 100.0 / normalCount,
+                    (normalRerankTotal.hits[5] - normalEmbedTotal.hits[5]) * 100.0 / normalCount,
+                    normalRerankTotal.rr / normalCount - normalEmbedTotal.rr / normalCount);
+        }
+        if (total - normalCount > 0) {
+            System.out.println("--- 指代题 " + (total - normalCount) + " 题（未改写时命中天然偏低，见下方 rewrite 单独验证）---");
+        }
+        System.out.println();
+        System.out.println("【混合口径（含指代题，仅供参考，勿据此判断退化）】");
         printRow("embedding 直排", embedTotal, total);
         printRow("embedding+rerank", rerankTotal, total);
-        System.out.println();
-        System.out.printf("HitRate@1 提升: %+.1f%%    HitRate@2 提升: %+.1f%%    HitRate@5 提升: %+.1f%%    MRR 提升: %+.4f%n",
-                (rerankTotal.hits[1] - embedTotal.hits[1]) * 100.0 / total,
-                (rerankTotal.hits[2] - embedTotal.hits[2]) * 100.0 / total,
-                (rerankTotal.hits[5] - embedTotal.hits[5]) * 100.0 / total,
-                rerankTotal.rr / total - embedTotal.rr / total);
         if (!savedByRerank.isEmpty()) System.out.println("rerank 救回（embed@5 没中 → rerank@5 中）: " + savedByRerank);
         if (!lostByRerank.isEmpty()) System.out.println("rerank 搞丢（embed@5 中了 → rerank@5 没中）: " + lostByRerank);
         if (!movedUp.isEmpty()) System.out.println("排名提前（都中但 rerank 首中更靠前）: " + movedUp);
