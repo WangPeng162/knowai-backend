@@ -263,6 +263,57 @@
 
 ---
 
+### 27. Docker 容器重建 → Nginx 缓存了旧 IP → 502
+
+- **现象**：重建 backend 容器后，**前端页面能打开**（200），但所有 `/api` 请求报 **502 Bad Gateway**。
+- **排查（分层验证，一下定位）**：
+  ```bash
+  curl localhost:18080/auth/me   # → 401 ✓ 后端是好的（直连上游）
+  curl localhost:8000/           # → 200 ✓ Nginx 首页正常
+  curl localhost:8000/api/...    # → 502 ✗ 只有"经 Nginx 转发"这条路断了
+  ```
+  → 三步就把范围锁定在"Nginx → backend 转发"这一层。
+- **根因**：Nginx 在**启动时**解析 `proxy_pass http://backend:8080` 的域名并缓存；**backend 容器重建后 IP 变了**，而 web 容器（3 天前创建）还指向旧 IP。
+- **修复**：`docker compose restart web` —— 让 Nginx 重新解析（502 → 401，立竿见影）。
+- **教训**：
+  - **重建任何上游服务后，顺手重启 Nginx**（或两个一起重建）。
+  - 彻底方案：Nginx 配 `resolver 127.0.0.11 valid=10s;` + 变量写法，让 DNS 每次请求重新解析（Docker 内置 DNS 是 127.0.0.11）。
+  - 排查网络问题**永远先分层**：容器内 → 宿主机直连上游 → 经网关 → 外网。**哪一层开始出错，问题就在那一层**。
+
+### 28. 配置写了却不生效：Spring Boot 的配置路径会变
+
+- **现象**：Redis 密码明明配了 `spring.redis.password`，连接却一直报 `NOAUTH Authentication required`（等于没带密码）。
+- **根因**：**Spring Boot 2.4 起 Redis 配置路径由 `spring.redis.*` 变为 `spring.data.redis.*`**。写旧路径**不报错、也不生效**——应用照常启动，只是用默认值去连。
+- **修复**：改为 `spring.data.redis.host/port/password`。
+- **线索**：IDE 其实一直在提示（配置项飘黄/飘红 + 右上角"未知配置项"计数）——**只是被忽略了**。
+- **教训**：
+  - **IDE 对配置项的警告要当回事**（"这个键我不认识"是很有价值的信号）。
+  - 网上教程（尤其旧文章）的配置项可能已过时 → **以官方文档 + IDE 补全为准**。
+  - 症状识别："**我明明配了，但它就像没读一样**" → 优先怀疑**配置路径/层级写错**，而不是怀疑功能本身。
+
+### 29. 会话记忆持久化：从内存 Map 到 Redis（换"芯"不动"壳"）
+
+- **背景**：原实现用 `ConcurrentHashMap<String, ChatMemory>` 存本机内存，三个问题：
+  ① 重启应用 → 会话全丢；② 多实例部署 → 请求打到另一台就"失忆"（**有状态服务无法水平扩展**）；③ 内存只增不减。
+- **关键认知（先读懂框架再动手）**：`MessageWindowChatMemory` 是**无状态的"壳"**（只持有 id、窗口大小、`ChatMemoryStore` 引用），**消息数据在 store 里**：
+  ```java
+  public List<ChatMessage> messages() {
+      List<ChatMessage> messages = new LinkedList(this.store.getMessages(this.id));  // 每次现取
+  }
+  ```
+  → **换存储 = 换一个 `ChatMemoryStore` 实现**，`ChatMemory` 的用法一行不改。
+- **做法**：实现 `ChatMemoryStore`（只有 3 个方法）+ builder 显式注入 Redis store + 写入时带 TTL。
+  - 序列化用 LangChain4j 自带的 `ChatMessageSerializer/Deserializer`（解决 `ChatMessage` 接口的多态还原）
+  - TTL 1 天、**每次更新重置**（活跃会话不过期）
+  - key 设计：`knowai:chat:memory:{sessionId}`
+- **效果**：重启不丢 ✓ 多实例共享 ✓ TTL 自动清理 ✓
+- **顺带收获**：改造后**代码更简单了**（删掉了一层 Map 缓存 —— 壳本来就是无状态的，不需要缓存）。
+- **教训**：
+  - **先理解框架的分层设计，再动手**——"换芯不动壳"，改动量比预想小得多（3 个方法 + 1 行 builder）。
+  - **"状态外置"**是分布式系统的基本手法：把状态从进程内存搬到共享存储，服务才能水平扩展。
+
+---
+
 ## 五、一句话总结
 
 > **数据质量决定上限，工程规范决定下限，评估体系决定你能不能知道自己在哪。**

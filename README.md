@@ -18,11 +18,14 @@
 | **两级检索** | embedding 粗召回 Top-20 → rerank 精排 Top-2，兼顾召回率与精度 |
 | **Query Rewriting** | 多轮对话指代消解：把"它有什么缺点？"补全为"RAG 有什么缺点？"再检索 |
 | **引用溯源** | 每次回答返回引用来源（文档名 / 页码 / 相似度） |
+| **域外拒答** | rerank 相关性阈值（实测校准 0.08）+ Prompt 强约束：知识库没有的内容明确拒答，不编造、不闲聊 |
 | **Agent 工具调用** | 模型自主决定何时检索（LangChain4j AiServices + `@Tool`） |
-| **多轮记忆** | 按 sessionId 隔离的会话记忆（MessageWindowChatMemory） |
-| **评估体系** | 20+3 题评估集 + HitRate@K / MRR 量化 + 失败题归因 |
+| **多轮记忆（Redis 持久化）** | 会话记忆存 Redis：**多实例共享、重启不丢、TTL 自动过期**（实现 LangChain4j `ChatMemoryStore`） |
+| **评估体系** | 20+3 题评估集 + HitRate@K / MRR 量化 + 阈值实测校准（`ThresholdCalibrator`） |
 | **内容隔离** | 知识库/文档归属校验；未指定知识库时只检索"自己的全部知识库" |
 | **删除与级联清理** | 删除文档/知识库时同步清理 Qdrant 向量与映射，不留孤儿数据 |
+| **容器化部署** | Docker Compose 五服务（mysql / qdrant / redis / backend / web），已部署阿里云并公网可访问 |
+| **注册邀请码** | 注册需邀请码，防止公开注册消耗 LLM 额度 |
 
 ## 📊 效果数据（同一份评估集，可复现）
 
