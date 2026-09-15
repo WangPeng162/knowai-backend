@@ -3,6 +3,7 @@ package com.knowai.knowaibackend.service.impl;
 import com.knowai.knowaibackend.agent.KnowledgeAssistant;
 import com.knowai.knowaibackend.agent.KnowledgeSearchTools;
 import com.knowai.knowaibackend.common.UserContext;
+import com.knowai.knowaibackend.config.RedisChatMemoryStore;
 import com.knowai.knowaibackend.entity.KnowledgeDocument;
 import com.knowai.knowaibackend.service.ChatService;
 import com.knowai.knowaibackend.service.KnowledgeDocumentService;
@@ -33,10 +34,7 @@ import java.util.Set;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
-
 
 @RequiredArgsConstructor
 @Service
@@ -49,12 +47,12 @@ public class ChatServiceImpl implements ChatService {
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final EmbeddingModel embeddingModel;
     private final ScoringModel scoringModel;
-    private final ConcurrentHashMap<String, ChatMemory> sessionMemories =new ConcurrentHashMap<>();
+    private final RedisChatMemoryStore redisChatMemoryStore;
 
     @Override
     public ChatResultVO ask(String question, Long knowledgeId,String sessionId) {
 
-        //0. 确定检索范围：传了 knowledgeId → 只搜它（并校验归属）；没传 → 搜当前用户全部知识库
+        //0.确定检索范围：传了 knowledgeId → 只搜它（并校验归属）；没传 → 搜当前用户全部知识库
         List<Long> scope;
         if (knowledgeId != null && knowledgeId > 0) {
             knowledgeDocumentService.checkKnowledgeOwnership(knowledgeId);
@@ -76,9 +74,10 @@ public class ChatServiceImpl implements ChatService {
             sessionId = "default-session"; // 兜底，所有不传 sessionId 的请求共用一个 memory
         }
 
-        //（2）拿到sessionId的memory，没有就创建
-        ChatMemory chatMemory = sessionMemories.computeIfAbsent(
-                sessionId, k -> MessageWindowChatMemory.withMaxMessages(10));
+        //（2）拿到sessionId的memory
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .id(sessionId).maxMessages(10)
+                .chatMemoryStore(redisChatMemoryStore).build();
 
         //2.构造工具（每次请求 new，knowledgeId 不同；内部两级检索：粗召回20 → rerank精排 → Top-2）
         String context = buildContext(chatMemory);

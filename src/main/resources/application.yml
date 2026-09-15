@@ -1,6 +1,10 @@
 spring:
-  autoconfigure:
-    exclude: org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}     # 本地默认 localhost；容器里传 redis
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:123456}
+      timeout: 3s
   application:
     name: knowai-backend
   profiles:
