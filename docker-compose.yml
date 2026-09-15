@@ -7,7 +7,7 @@
 #   docker compose down -v          停止并删除数据卷（慎用）
 #
 # 服务间通过"服务名"互相访问（容器网络内置 DNS）：
-#   前端 nginx → backend:8080 ；后端 → mysql:3306 / qdrant:6334
+#   前端 nginx → backend:8080 ；后端 → mysql:3306 / qdrant:6334 / redis:6379
 # ============================================================
 
 services:
@@ -48,6 +48,25 @@ services:
       # 仅暴露 HTTP（6333）便于调试；后端走容器网络用 gRPC(6334)
       - "${QDRANT_HTTP_PORT:-6333}:6333"
 
+  # ---------- 会话存储（Redis）----------
+  # 用途：多轮对话记忆持久化（替代原 JVM 内存 Map）→ 多实例共享、重启不丢、TTL 自动过期
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    container_name: knowai-redis
+    environment:
+      # 密码必须设置：Redis 无密码暴露是被扫描入侵的经典入口（哪怕只在容器网络内也养成习惯）
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-knowai-redis-2026}
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-knowai-redis-2026}"]
+    volumes:
+      - redis-data:/data
+    # 刻意不映射端口到宿主机：只走容器内网，外网无法直连
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ---------- 后端服务 ----------
   backend:
     # 显式命名镜像：不依赖 compose 项目名（目录名），
@@ -63,6 +82,8 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
+      redis:
+        condition: service_healthy
     environment:
       # 激活 docker profile（容器内配置全部来自环境变量，不使用本地配置文件）
       SPRING_PROFILES_ACTIVE: docker
@@ -73,6 +94,10 @@ services:
       # 向量库地址（容器名，不是 localhost）
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6334
+      # 会话存储（Redis）地址：容器名，不是 localhost
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-knowai-redis-2026}
       # 大模型与对象存储（从 .env 注入，绝不写进镜像）
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
       # 注册邀请码（防止陌生人注册消耗 LLM 额度）
@@ -102,3 +127,4 @@ services:
 volumes:
   mysql-data:
   qdrant-data:
+  redis-data:
